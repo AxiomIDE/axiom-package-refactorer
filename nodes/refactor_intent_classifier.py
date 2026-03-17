@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 
@@ -7,16 +6,16 @@ import anthropic
 import httpx
 
 from gen.axiom_official_axiom_agent_messages_messages_pb2 import AgentRequest, PackageSpec, NodeSpec
+from gen.axiom_logger import AxiomLogger, AxiomSecrets
 
-logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are an expert at identifying Axiom packages from user descriptions.
 Extract the package name and refactoring goal from the user's request."""
 
 
-def handle(req: AgentRequest, context) -> PackageSpec:
+def refactor_intent_classifier(log: AxiomLogger, secrets: AxiomSecrets, input: AgentRequest) -> PackageSpec:
     """Parse refactoring goal and look up the target package in the registry."""
-    api_key = context.secrets.get("ANTHROPIC_API_KEY") if hasattr(context, 'secrets') else os.environ.get("ANTHROPIC_API_KEY", "")
+    api_key = secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
     client = anthropic.Anthropic(api_key=api_key)
 
     message = client.messages.create(
@@ -25,7 +24,7 @@ def handle(req: AgentRequest, context) -> PackageSpec:
         system=SYSTEM_PROMPT,
         messages=[{
             "role": "user",
-            "content": f"""Extract from: "{req.goal}"
+            "content": f"""Extract from: "{input.goal}"
 
 Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what to change>"}}"""
         }]
@@ -44,7 +43,7 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
-        data = {"package_name": "axiom-official/unknown", "refactor_goal": req.goal}
+        data = {"package_name": "axiom-official/unknown", "refactor_goal": input.goal}
 
     # Fetch the package from the registry to get node list.
     registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
@@ -52,7 +51,7 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
 
     spec = PackageSpec(
         name=data.get("package_name", "axiom-official/unknown"),
-        fix_instructions=data.get("refactor_goal", req.goal),
+        fix_instructions=data.get("refactor_goal", input.goal),
     )
 
     try:
@@ -77,6 +76,6 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
                     node_type=node.get("node_type", "unary"),
                 ))
     except Exception as e:
-        logger.warning(f"Failed to fetch package from registry: {e}")
+        log.warning(f"Failed to fetch package from registry: {e}")
 
     return spec

@@ -1,6 +1,6 @@
 def test_refactor_publisher_imports():
     import nodes.refactor_publisher as m
-    assert hasattr(m, "handle")
+    assert hasattr(m, "refactor_publisher")
 
 
 def test_bump_version():
