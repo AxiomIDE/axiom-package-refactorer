@@ -1,0 +1,154 @@
+syntax = "proto3";
+package axiom_agent_messages;
+option go_package = "axiom-official/axiom-agent-messages/gen";
+
+// AgentRequest is the top-level input to the Axiom agent and all sub-flows.
+// It carries the user's goal plus the runtime credentials needed by agent nodes.
+message AgentRequest {
+  // Natural language description of what to build / fix / refactor.
+  string goal = 1;
+  // Target language for generated code: "python" | "go".
+  string language = 2;
+  // GitHub OAuth access token (fetched at runtime via GET /app/github/token).
+  // Used by Publisher nodes to create repos and push code on the user's behalf.
+  string github_token = 3;
+  // The caller's Axiom API key — used by agent nodes to call BFF endpoints.
+  string axiom_api_key = 4;
+  // Base URL of the Axiom registry (e.g. "http://localhost:8082").
+  string registry_url = 5;
+  // Base URL of the Axiom BFF (e.g. "http://localhost:8083").
+  string bff_url = 6;
+  // Populated by IntentRouter: build_package | design_flow | debug_package |
+  // refactor_package | debug_flow | refactor_flow
+  string intent = 7;
+}
+
+// NodeSpec describes a single node implementation within a package.
+message NodeSpec {
+  string name = 1;
+  // Protobuf message name for the input type (as defined in messages.proto).
+  string input_message = 2;
+  // Protobuf message name for the output type.
+  string output_message = 3;
+  // "unary" (single request → single response) or "pipeline" (streaming output).
+  string node_type = 4;
+  // Human-readable description of what this node does.
+  string description = 5;
+  // Full source code of the node implementation file (e.g. nodes/my_node.py).
+  string source_code = 6;
+  // Full source code of the corresponding unit test file.
+  string test_code = 7;
+  // Names of secrets this node requires (declared in axiom.yaml required_secrets).
+  repeated string required_secrets = 8;
+}
+
+// PackageSpec describes a complete Axiom package ready for publishing.
+message PackageSpec {
+  // Scoped package name, e.g. "axiom-official/axiom-package-builder".
+  string name = 1;
+  string version = 2;
+  // "python" | "go"
+  string language = 3;
+  // GitHub repo URL (populated by Publisher after repo creation).
+  string repo_url = 4;
+  // Git commit SHA (populated by Publisher after pushing code).
+  string commit_hash = 5;
+  // All nodes in this package.
+  repeated NodeSpec nodes = 6;
+  // Scoped package names this package imports, e.g. "axiom-official/axiom-agent-messages".
+  repeated string imports = 7;
+  // LLM fix instructions passed back to CodeGenerator on error loop iterations.
+  string fix_instructions = 8;
+  // Full content of the axiom.yaml file.
+  string axiom_yaml = 9;
+  // Full content of messages/messages.proto.
+  string proto_content = 10;
+  // Full content of requirements.txt (Python packages only).
+  string requirements_txt = 11;
+}
+
+// PublishResult is returned by Publisher and DeploymentWatcher nodes.
+message PublishResult {
+  bool success = 1;
+  // Scoped package name that was published.
+  string package_name = 2;
+  // GitHub repo URL where the source lives.
+  string repo_url = 3;
+  // Git commit SHA of the published version.
+  string commit_hash = 4;
+  // Error message if success == false.
+  string error = 5;
+  // ULIDs of the published nodes (returned in the publish success payload).
+  repeated string node_ids = 6;
+  // Secrets that were absent at test time — a missing-secret failure does NOT
+  // trigger the CodeGenerator loop since the code itself is not wrong.
+  repeated string missing_secrets = 7;
+}
+
+// FlowSpec describes a flow graph to be compiled and tested.
+message FlowSpec {
+  // Human-readable name for the flow.
+  string name = 1;
+  string description = 2;
+  // Serialised sourceGraphRequest JSON (the format accepted by POST /app/graphs).
+  string graph_json = 3;
+  // LLM fix instructions passed back to FlowCompiler / GraphReassembler on loop iterations.
+  string fix_instructions = 4;
+  // Set by FlowRefactorClassifier to identify an existing flow being refactored.
+  string existing_graph_id = 5;
+}
+
+// CompileResult is returned by FlowCompiler nodes.
+message CompileResult {
+  bool success = 1;
+  // The blobstore artifact ID of the compiled flow.
+  string artifact_id = 2;
+  // Error message if success == false.
+  string error = 3;
+}
+
+// TestResult is returned by PackageTester and FlowTestInvoker nodes.
+message TestResult {
+  bool success = 1;
+  // The execution_id assigned by the ingress (used to query debug events).
+  string execution_id = 2;
+  // The debug session ID (used to query the debug event stream).
+  string session_id = 3;
+  // Decoded JSON output from the terminal node (if successful).
+  string output_json = 4;
+  // Error message if success == false.
+  string error = 5;
+  // Secrets that were absent during the test run — signals that the code is
+  // correct but cannot be validated until the user registers the secrets.
+  repeated string missing_secrets = 6;
+}
+
+// AnalysisResult is the output of ErrorAnalyser nodes.
+// The has_error field is used as the loop back-edge condition.
+message AnalysisResult {
+  // true if there is a fixable code error (triggers loop back to CodeGenerator).
+  // false if the test passed or the only failure was missing secrets.
+  bool has_error = 1;
+  // Detailed instructions for CodeGenerator / GraphReassembler to apply.
+  string fix_instructions = 2;
+  // Plain-English summary of the error for user display.
+  string error_summary = 3;
+  // How many fix iterations have been attempted so far.
+  int32 iteration = 4;
+}
+
+// AgentProgress is emitted by StreamStatusToUser as the orchestrator runs.
+message AgentProgress {
+  // Current stage: "designing" | "generating" | "publishing" | "testing" |
+  //                "debugging" | "complete" | "error"
+  string stage = 1;
+  // Human-readable status message to display to the user.
+  string message = 2;
+  // true when the agent has finished (success or failure).
+  bool complete = 3;
+  bool success = 4;
+  // The blobstore artifact ID when a flow has been successfully compiled.
+  string artifact_id = 5;
+  // The published package name when a package has been successfully published.
+  string package_name = 6;
+}
