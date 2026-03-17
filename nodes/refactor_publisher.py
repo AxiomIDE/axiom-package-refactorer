@@ -29,7 +29,7 @@ def refactor_publisher(log: AxiomLogger, secrets: AxiomSecrets, input: PackageBu
     """Bump version, commit refactored code to GitHub, and republish."""
 
     github_token = secrets.get("GITHUB_TOKEN", "")
-    axiom_api_key = secrets.get("AXIOM_API_KEY") or os.environ.get("AXIOM_API_KEY", "")
+    axiom_api_key = secrets.get("AXIOM_API_KEY", "")
 
     new_version = _bump_version(input.version or "0.1.0")
     pkg_short = input.name.split("/")[-1] if "/" in input.name else input.name

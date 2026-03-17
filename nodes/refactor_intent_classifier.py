@@ -1,6 +1,5 @@
 import json
 import os
-import re
 
 import anthropic
 import httpx
@@ -14,8 +13,8 @@ Extract the package name and refactoring goal from the user's request."""
 
 
 def refactor_intent_classifier(log: AxiomLogger, secrets: AxiomSecrets, input: AgentRequest) -> PackageBuildContext:
-    """Parse refactoring goal and look up the target package in the registry."""
-    api_key = secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
+    """Parse refactoring prompt and look up the target package in the registry."""
+    api_key = secrets.get("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=api_key)
 
     message = client.messages.create(
@@ -24,7 +23,7 @@ def refactor_intent_classifier(log: AxiomLogger, secrets: AxiomSecrets, input: A
         system=SYSTEM_PROMPT,
         messages=[{
             "role": "user",
-            "content": f"""Extract from: "{input.goal}"
+            "content": f"""Extract from: "{input.prompt}"
 
 Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what to change>"}}"""
         }]
@@ -43,15 +42,15 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
-        data = {"package_name": "axiom-official/unknown", "refactor_goal": input.goal}
+        data = {"package_name": "axiom-official/unknown", "refactor_goal": input.prompt}
 
     ctx = PackageBuildContext(
         name=data.get("package_name", "axiom-official/unknown"),
-        fix_instructions=data.get("refactor_goal", input.goal),
+        fix_instructions=data.get("refactor_goal", input.prompt),
     )
 
     registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
-    axiom_api_key = os.environ.get("AXIOM_API_KEY", "")
+    axiom_api_key = secrets.get("AXIOM_API_KEY", "")
 
     try:
         pkg_short = ctx.name.split("/")[-1]
@@ -75,6 +74,6 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
                     node_type=node.get("node_type", "unary"),
                 ))
     except Exception as e:
-        log.warn(f"Failed to fetch package from registry: {e}")
+        log.info(f"Failed to fetch package from registry: {e}")
 
     return ctx

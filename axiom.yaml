@@ -5,35 +5,37 @@ description: Refactors an existing Axiom package by fetching its source, applyin
 author: Axiom Official
 license: MIT
 nodes:
-    - name: RefactorIntentClassifier
-      description: Parses the refactoring goal and identifies the target package name, version, and language.
-      input: AgentRequest
-      output: PackageBuildContext
-      required_secrets:
-        - ANTHROPIC_API_KEY
-    - name: SourceFetcher
-      description: Fetches the current source code for each node from the registry and populates NodeSpec.source_code fields.
-      input: PackageBuildContext
-      output: PackageBuildContext
-    - name: RefactorCodeGenerator
-      description: Applies the refactoring changes to each node's source code using the LLM, updating NodeSpec.source_code fields.
-      input: PackageBuildContext
-      output: PackageBuildContext
-      required_secrets:
-        - ANTHROPIC_API_KEY
-    - name: RefactorPublisher
-      description: Bumps the package version, commits the refactored code to GitHub, republishes, and returns an AgentProgress with the result.
-      input: PackageBuildContext
-      output: AgentProgress
-      required_secrets:
-        - GITHUB_TOKEN
-        - AXIOM_API_KEY
+  - name: RefactorIntentClassifier
+    input: AgentRequest
+    output: PackageBuildContext
+    description: Parses the refactoring prompt and identifies the target package name, version, and language.
+    required_secrets:
+      - ANTHROPIC_API_KEY
+      - AXIOM_API_KEY
+  - name: SourceFetcher
+    input: PackageBuildContext
+    output: PackageBuildContext
+    description: Fetches the current source code for each node from the registry and populates NodeSpec.source_code fields.
+    required_secrets:
+      - AXIOM_API_KEY
+  - name: RefactorCodeGenerator
+    input: PackageBuildContext
+    output: PackageBuildContext
+    description: Applies the refactoring changes to each node's source code using the LLM, updating NodeSpec.source_code fields.
+    required_secrets:
+      - ANTHROPIC_API_KEY
+  - name: RefactorPublisher
+    input: PackageBuildContext
+    output: AgentProgress
+    description: Bumps the package version, commits the refactored code to GitHub, republishes, and returns an AgentProgress with the result.
+    required_secrets:
+      - GITHUB_TOKEN
+      - AXIOM_API_KEY
 imports:
-    - package: axiom-official/axiom-agent-messages
-      version: 0.1.0
-      messages:
-        - AgentRequest
-        - NodeSpec
-        - PackageBuildContext
-        - AgentProgress
-        - FlowBuildContext
+  - package: axiom-official/axiom-agent-messages
+    version: 0.1.0
+    messages:
+      - AgentRequest
+      - NodeSpec
+      - PackageBuildContext
+      - AgentProgress
