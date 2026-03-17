@@ -1,0 +1,29 @@
+name: axiom-official/axiom-package-refactorer
+version: 0.1.0
+language: python
+description: Refactors an existing Axiom package by fetching its source, applying LLM-driven changes, and republishing.
+author: Axiom Official
+license: MIT
+nodes:
+  - name: RefactorIntentClassifier
+    input: AgentRequest
+    output: PackageSpec
+    description: Parses the refactoring goal and identifies the target package. Fetches the current package source from the registry.
+    required_secrets:
+      - ANTHROPIC_API_KEY
+  - name: SourceFetcher
+    input: PackageSpec
+    output: PackageSpec
+    description: Fetches the current source code for each node from the registry (node source snippets) and populates NodeSpec.source_code fields.
+  - name: RefactorCodeGenerator
+    input: PackageSpec
+    output: PackageSpec
+    description: Applies the refactoring changes to each node's source code using the LLM, updating NodeSpec.source_code fields.
+    required_secrets:
+      - ANTHROPIC_API_KEY
+  - name: RefactorPublisher
+    input: PackageSpec
+    output: PublishResult
+    description: Bumps the package version, commits the refactored code to GitHub, and republishes via axiom publish.
+imports:
+  - axiom-official/axiom-agent-messages
