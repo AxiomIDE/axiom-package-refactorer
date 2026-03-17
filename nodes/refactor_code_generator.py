@@ -2,15 +2,15 @@ import os
 
 import anthropic
 
-from gen.axiom_official_axiom_agent_messages_messages_pb2 import PackageSpec
+from gen.axiom_official_axiom_agent_messages_messages_pb2 import PackageBuildContext
 from gen.axiom_logger import AxiomLogger, AxiomSecrets
 
 
 SYSTEM_PROMPT = """You are an expert Python developer applying targeted refactoring changes to Axiom node implementations.
-Apply only the requested changes while preserving the existing structure and handle() function signature."""
+Apply only the requested changes while preserving the existing function signatures."""
 
 
-def refactor_code_generator(log: AxiomLogger, secrets: AxiomSecrets, input: PackageSpec) -> PackageSpec:
+def refactor_code_generator(log: AxiomLogger, secrets: AxiomSecrets, input: PackageBuildContext) -> PackageBuildContext:
     """Apply refactoring changes to each node's source code."""
 
     api_key = secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")

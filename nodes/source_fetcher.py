@@ -2,12 +2,11 @@ import os
 
 import httpx
 
-from gen.axiom_official_axiom_agent_messages_messages_pb2 import PackageSpec
+from gen.axiom_official_axiom_agent_messages_messages_pb2 import PackageBuildContext
 from gen.axiom_logger import AxiomLogger, AxiomSecrets
 
 
-
-def source_fetcher(log: AxiomLogger, secrets: AxiomSecrets, input: PackageSpec) -> PackageSpec:
+def source_fetcher(log: AxiomLogger, secrets: AxiomSecrets, input: PackageBuildContext) -> PackageBuildContext:
     """Fetch source code for each node from the registry."""
 
     registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
@@ -29,8 +28,8 @@ def source_fetcher(log: AxiomLogger, secrets: AxiomSecrets, input: PackageSpec) 
                 data = resp.json()
                 node.source_code = data.get("source_code", "")
             else:
-                log.warning(f"Failed to fetch source for {node.name}: {resp.status_code}")
+                log.warn(f"Failed to fetch source for {node.name}: {resp.status_code}")
         except Exception as e:
-            log.warning(f"Error fetching source for {node.name}: {e}")
+            log.warn(f"Error fetching source for {node.name}: {e}")
 
     return input

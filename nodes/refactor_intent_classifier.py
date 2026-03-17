@@ -5,7 +5,7 @@ import re
 import anthropic
 import httpx
 
-from gen.axiom_official_axiom_agent_messages_messages_pb2 import AgentRequest, PackageSpec, NodeSpec
+from gen.axiom_official_axiom_agent_messages_messages_pb2 import AgentRequest, PackageBuildContext, NodeSpec
 from gen.axiom_logger import AxiomLogger, AxiomSecrets
 
 
@@ -13,7 +13,7 @@ SYSTEM_PROMPT = """You are an expert at identifying Axiom packages from user des
 Extract the package name and refactoring goal from the user's request."""
 
 
-def refactor_intent_classifier(log: AxiomLogger, secrets: AxiomSecrets, input: AgentRequest) -> PackageSpec:
+def refactor_intent_classifier(log: AxiomLogger, secrets: AxiomSecrets, input: AgentRequest) -> PackageBuildContext:
     """Parse refactoring goal and look up the target package in the registry."""
     api_key = secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
     client = anthropic.Anthropic(api_key=api_key)
@@ -45,17 +45,16 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
     except json.JSONDecodeError:
         data = {"package_name": "axiom-official/unknown", "refactor_goal": input.goal}
 
-    # Fetch the package from the registry to get node list.
-    registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
-    axiom_api_key = os.environ.get("AXIOM_API_KEY", "")
-
-    spec = PackageSpec(
+    ctx = PackageBuildContext(
         name=data.get("package_name", "axiom-official/unknown"),
         fix_instructions=data.get("refactor_goal", input.goal),
     )
 
+    registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
+    axiom_api_key = os.environ.get("AXIOM_API_KEY", "")
+
     try:
-        pkg_short = spec.name.split("/")[-1]
+        pkg_short = ctx.name.split("/")[-1]
         resp = httpx.get(
             f"{registry_url}/packages/{pkg_short}",
             headers={"Authorization": f"Bearer {axiom_api_key}"},
@@ -63,12 +62,12 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
         )
         if resp.status_code == 200:
             pkg_data = resp.json()
-            spec.version = pkg_data.get("version", "0.1.0")
-            spec.language = pkg_data.get("language", "python")
-            spec.proto_content = pkg_data.get("proto_content", "")
-            spec.axiom_yaml = pkg_data.get("axiom_yaml", "")
+            ctx.version = pkg_data.get("version", "0.1.0")
+            ctx.language = pkg_data.get("language", "python")
+            ctx.proto_content = pkg_data.get("proto_content", "")
+            ctx.axiom_yaml = pkg_data.get("axiom_yaml", "")
             for node in pkg_data.get("nodes", []):
-                spec.nodes.append(NodeSpec(
+                ctx.nodes.append(NodeSpec(
                     name=node.get("name", ""),
                     description=node.get("description", ""),
                     input_message=node.get("input_message", ""),
@@ -76,6 +75,6 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
                     node_type=node.get("node_type", "unary"),
                 ))
     except Exception as e:
-        log.warning(f"Failed to fetch package from registry: {e}")
+        log.warn(f"Failed to fetch package from registry: {e}")
 
-    return spec
+    return ctx

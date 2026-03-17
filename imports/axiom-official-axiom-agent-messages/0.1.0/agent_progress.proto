@@ -42,102 +42,102 @@ message NodeSpec {
   repeated string required_secrets = 8;
 }
 
-// PackageSpec describes a complete Axiom package ready for publishing.
-message PackageSpec {
-  // Scoped package name, e.g. "axiom-official/axiom-package-builder".
+// PackageBuildContext is the single message that flows through the entire
+// package build pipeline. Each stage enriches it with its own outputs so that
+// all context is available to every downstream node, including on loop-back
+// iterations from PackageErrorAnalyser back to CodeGenerator.
+message PackageBuildContext {
+  // ── Design fields (IntentClassifier / PackageDesigner) ───────────────────
+  // Scoped package name, e.g. "axiom-official/my-package".
   string name = 1;
   string version = 2;
   // "python" | "go"
   string language = 3;
-  // GitHub repo URL (populated by Publisher after repo creation).
-  string repo_url = 4;
-  // Git commit SHA (populated by Publisher after pushing code).
-  string commit_hash = 5;
-  // All nodes in this package.
-  repeated NodeSpec nodes = 6;
-  // Scoped package names this package imports, e.g. "axiom-official/axiom-agent-messages".
-  repeated string imports = 7;
-  // LLM fix instructions passed back to CodeGenerator on error loop iterations.
-  string fix_instructions = 8;
-  // Full content of the axiom.yaml file.
-  string axiom_yaml = 9;
+  // All nodes in this package (NodeSpec.source_code and test_code populated by CodeGenerator).
+  repeated NodeSpec nodes = 4;
+  // Scoped package names this package imports.
+  repeated string imports = 5;
   // Full content of messages/messages.proto.
-  string proto_content = 10;
+  string proto_content = 6;
+  // Full content of axiom.yaml.
+  string axiom_yaml = 7;
   // Full content of requirements.txt (Python packages only).
-  string requirements_txt = 11;
+  string requirements_txt = 8;
+
+  // ── Publish fields (Publisher) ────────────────────────────────────────────
+  // GitHub repo URL (set after repo creation and code push).
+  string repo_url = 9;
+  // Git commit SHA of the pushed code.
+  string commit_hash = 10;
+  bool publish_success = 11;
+  string publish_error = 12;
+  // ULIDs of the published nodes returned by the registry.
+  repeated string node_ids = 13;
+
+  // ── Test fields (PackageTester) ───────────────────────────────────────────
+  bool test_success = 14;
+  string test_error = 15;
+  // Execution ID from the ingress (used to query debug events).
+  string execution_id = 16;
+  // Debug session ID for the debug event stream.
+  string session_id = 17;
+  // Secrets absent at test time — code is correct but can't be validated yet.
+  repeated string missing_secrets = 18;
+
+  // ── Analysis fields (PackageErrorAnalyser) ────────────────────────────────
+  // true triggers the loop back-edge to CodeGenerator (max 3 iterations).
+  bool has_error = 19;
+  // Detailed fix instructions for CodeGenerator on retry iterations.
+  string fix_instructions = 20;
+  // Plain-English error summary for user display.
+  string error_summary = 21;
+  // Number of fix iterations attempted so far.
+  int32 iteration = 22;
 }
 
-// PublishResult is returned by Publisher and DeploymentWatcher nodes.
-message PublishResult {
-  bool success = 1;
-  // Scoped package name that was published.
-  string package_name = 2;
-  // GitHub repo URL where the source lives.
-  string repo_url = 3;
-  // Git commit SHA of the published version.
-  string commit_hash = 4;
-  // Error message if success == false.
-  string error = 5;
-  // ULIDs of the published nodes (returned in the publish success payload).
-  repeated string node_ids = 6;
-  // Secrets that were absent at test time — a missing-secret failure does NOT
-  // trigger the CodeGenerator loop since the code itself is not wrong.
-  repeated string missing_secrets = 7;
-}
-
-// FlowSpec describes a flow graph to be compiled and tested.
-message FlowSpec {
+// FlowBuildContext is the single message that flows through the entire flow
+// build and refactor pipelines. Each stage enriches it with its own outputs
+// so that the graph JSON is available for reassembly on loop-back iterations.
+message FlowBuildContext {
+  // ── Design fields (FlowIntentClassifier / NodeResolver / GraphAssembler) ──
   // Human-readable name for the flow.
   string name = 1;
   string description = 2;
-  // Serialised sourceGraphRequest JSON (the format accepted by POST /app/graphs).
+  // Serialised sourceGraphRequest JSON (format accepted by POST /app/graphs/compile).
   string graph_json = 3;
-  // LLM fix instructions passed back to FlowCompiler / GraphReassembler on loop iterations.
-  string fix_instructions = 4;
-  // Set by FlowRefactorClassifier to identify an existing flow being refactored.
-  string existing_graph_id = 5;
-}
+  // Set by FlowRefactorClassifier when refactoring an existing flow.
+  string existing_graph_id = 4;
 
-// CompileResult is returned by FlowCompiler nodes.
-message CompileResult {
-  bool success = 1;
-  // The blobstore artifact ID of the compiled flow.
-  string artifact_id = 2;
-  // Error message if success == false.
-  string error = 3;
-}
+  // ── Compile fields (FlowCompiler) ─────────────────────────────────────────
+  bool compile_success = 5;
+  // Blobstore artifact ID of the compiled flow.
+  string artifact_id = 6;
+  string compile_error = 7;
 
-// TestResult is returned by PackageTester and FlowTestInvoker nodes.
-message TestResult {
-  bool success = 1;
-  // The execution_id assigned by the ingress (used to query debug events).
-  string execution_id = 2;
-  // The debug session ID (used to query the debug event stream).
-  string session_id = 3;
+  // ── Test fields (FlowTestInvoker) ─────────────────────────────────────────
+  bool test_success = 8;
+  string test_error = 9;
+  // Execution ID from the ingress (used to query debug events).
+  string execution_id = 10;
+  // Debug session ID for the debug event stream.
+  string session_id = 11;
   // Decoded JSON output from the terminal node (if successful).
-  string output_json = 4;
-  // Error message if success == false.
-  string error = 5;
-  // Secrets that were absent during the test run — signals that the code is
-  // correct but cannot be validated until the user registers the secrets.
-  repeated string missing_secrets = 6;
+  string output_json = 12;
+  // Secrets absent at test time.
+  repeated string missing_secrets = 13;
+
+  // ── Analysis fields (FlowErrorAnalyser / FlowRefactorAnalyser) ────────────
+  // true triggers the loop back-edge to GraphAssembler (max 3 iterations).
+  bool has_error = 14;
+  // Detailed fix instructions for GraphAssembler on retry iterations.
+  string fix_instructions = 15;
+  // Plain-English error summary for user display.
+  string error_summary = 16;
+  // Number of fix iterations attempted so far.
+  int32 iteration = 17;
 }
 
-// AnalysisResult is the output of ErrorAnalyser nodes.
-// The has_error field is used as the loop back-edge condition.
-message AnalysisResult {
-  // true if there is a fixable code error (triggers loop back to CodeGenerator).
-  // false if the test passed or the only failure was missing secrets.
-  bool has_error = 1;
-  // Detailed instructions for CodeGenerator / GraphReassembler to apply.
-  string fix_instructions = 2;
-  // Plain-English summary of the error for user display.
-  string error_summary = 3;
-  // How many fix iterations have been attempted so far.
-  int32 iteration = 4;
-}
-
-// AgentProgress is emitted by StreamStatusToUser as the orchestrator runs.
+// AgentProgress is emitted by terminal nodes and StreamStatusToUser.
 message AgentProgress {
   // Current stage: "designing" | "generating" | "publishing" | "testing" |
   //                "debugging" | "complete" | "error"
