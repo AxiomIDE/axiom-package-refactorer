@@ -10,7 +10,7 @@ def source_fetcher(log: AxiomLogger, secrets: AxiomSecrets, input: PackageBuildC
     """Fetch source code for each node from the registry."""
 
     registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
-    axiom_api_key = secrets.get("AXIOM_API_KEY", "")
+    axiom_api_key, _ = secrets.get("AXIOM_API_KEY")
     headers = {"Authorization": f"Bearer {axiom_api_key}"}
 
     pkg_short = input.name.split("/")[-1] if "/" in input.name else input.name

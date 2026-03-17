@@ -14,7 +14,7 @@ Extract the package name and refactoring goal from the user's request."""
 
 def refactor_intent_classifier(log: AxiomLogger, secrets: AxiomSecrets, input: AgentRequest) -> PackageBuildContext:
     """Parse refactoring prompt and look up the target package in the registry."""
-    api_key = secrets.get("ANTHROPIC_API_KEY")
+    api_key, _ = secrets.get("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=api_key)
 
     message = client.messages.create(
@@ -50,8 +50,7 @@ Return JSON: {{"package_name": "axiom-official/<name>", "refactor_goal": "<what 
     )
 
     registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
-    axiom_api_key = secrets.get("AXIOM_API_KEY", "")
-
+    axiom_api_key, _ = secrets.get("AXIOM_API_KEY")
     try:
         pkg_short = ctx.name.split("/")[-1]
         resp = httpx.get(

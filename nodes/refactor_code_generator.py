@@ -13,7 +13,7 @@ Apply only the requested changes while preserving the existing function signatur
 def refactor_code_generator(log: AxiomLogger, secrets: AxiomSecrets, input: PackageBuildContext) -> PackageBuildContext:
     """Apply refactoring changes to each node's source code."""
 
-    api_key = secrets.get("ANTHROPIC_API_KEY")
+    api_key, _ = secrets.get("ANTHROPIC_API_KEY")
     client = anthropic.Anthropic(api_key=api_key)
 
     refactor_goal = input.fix_instructions or "improve code quality"
