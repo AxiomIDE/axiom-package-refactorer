@@ -1,3 +1,5 @@
+from nodes.refactor_code_generator import refactor_code_generator
+
+
 def test_refactor_code_generator_imports():
-    import nodes.refactor_code_generator as m
-    assert hasattr(m, "refactor_code_generator")
+    assert callable(refactor_code_generator)

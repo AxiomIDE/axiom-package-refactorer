@@ -1,3 +1,5 @@
+from nodes.refactor_intent_classifier import refactor_intent_classifier
+
+
 def test_refactor_intent_classifier_imports():
-    import nodes.refactor_intent_classifier as m
-    assert hasattr(m, "refactor_intent_classifier")
+    assert callable(refactor_intent_classifier)

@@ -1,7 +1,8 @@
-def test_refactor_publisher_imports():
-    import nodes.refactor_publisher as m
-    assert hasattr(m, "refactor_publisher")
+from nodes.refactor_publisher import refactor_publisher
 
+
+def test_refactor_publisher_imports():
+    assert callable(refactor_publisher)
 
 def test_bump_version():
     from nodes.refactor_publisher import _bump_version
