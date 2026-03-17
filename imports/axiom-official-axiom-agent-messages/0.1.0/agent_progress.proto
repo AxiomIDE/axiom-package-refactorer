@@ -3,24 +3,15 @@ package axiom_agent_messages;
 option go_package = "axiom-official/axiom-agent-messages/gen";
 
 // AgentRequest is the top-level input to the Axiom agent and all sub-flows.
-// It carries the user's goal plus the runtime credentials needed by agent nodes.
+// Credentials and service URLs are injected at runtime via secrets and
+// Kubernetes environment variables — never passed by the caller.
 message AgentRequest {
-  // Natural language description of what to build / fix / refactor.
-  string goal = 1;
-  // Target language for generated code: "python" | "go".
-  string language = 2;
-  // GitHub OAuth access token (fetched at runtime via GET /app/github/token).
-  // Used by Publisher nodes to create repos and push code on the user's behalf.
-  string github_token = 3;
-  // The caller's Axiom API key — used by agent nodes to call BFF endpoints.
-  string axiom_api_key = 4;
-  // Base URL of the Axiom registry (e.g. "http://localhost:8082").
-  string registry_url = 5;
-  // Base URL of the Axiom BFF (e.g. "http://localhost:8083").
-  string bff_url = 6;
-  // Populated by IntentRouter: build_package | design_flow | debug_package |
-  // refactor_package | debug_flow | refactor_flow
-  string intent = 7;
+  // Natural language prompt describing what to build, fix, or refactor.
+  string prompt = 1;
+  // Populated internally by IntentRouter — do not set this when invoking the agent.
+  // Valid values: build_package | design_flow | debug_package |
+  //               refactor_package | debug_flow | refactor_flow
+  string intent = 2;
 }
 
 // NodeSpec describes a single node implementation within a package.
