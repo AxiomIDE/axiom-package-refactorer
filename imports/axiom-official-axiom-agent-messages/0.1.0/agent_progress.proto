@@ -54,6 +54,8 @@ message PackageBuildContext {
   string axiom_yaml = 7;
   // Full content of requirements.txt (Python packages only).
   string requirements_txt = 8;
+  // Human-readable description of what this package does.
+  string description = 23;
 
   // ── Publish fields (Publisher) ────────────────────────────────────────────
   // GitHub repo URL (set after repo creation and code push).
