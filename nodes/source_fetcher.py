@@ -9,7 +9,7 @@ from gen.axiom_logger import AxiomLogger, AxiomSecrets
 def source_fetcher(log: AxiomLogger, secrets: AxiomSecrets, input: PackageBuildContext) -> PackageBuildContext:
     """Fetch source code for each node from the registry."""
 
-    registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
+    registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry.default.svc.cluster.local:8082")
     axiom_api_key, _ = secrets.get("AXIOM_API_KEY")
     headers = {"Authorization": f"Bearer {axiom_api_key}"}
 

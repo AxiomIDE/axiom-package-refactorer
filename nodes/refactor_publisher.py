@@ -83,7 +83,7 @@ def refactor_publisher(log: AxiomLogger, secrets: AxiomSecrets, input: PackageBu
 
         sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmpdir, capture_output=True, text=True).stdout.strip()
 
-        registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry:8082")
+        registry_url = os.environ.get("REGISTRY_URL", "http://axiom-registry.default.svc.cluster.local:8082")
         resp = httpx.post(
             f"{registry_url}/packages/publish",
             headers={"Authorization": f"Bearer {axiom_api_key}"},
